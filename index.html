@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task Tracker</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #ffffff;
+    --bg2: #f5f5f4;
+    --bg3: #f0efed;
+    --text: #1a1a1a;
+    --text2: #6b7280;
+    --text3: #9ca3af;
+    --border: rgba(0,0,0,0.12);
+    --border2: rgba(0,0,0,0.22);
+    --radius: 8px;
+    --radius-lg: 12px;
+    --font: -apple-system, 'Segoe UI', sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1e;
+      --bg2: #2c2c2e;
+      --bg3: #3a3a3c;
+      --text: #f2f2f7;
+      --text2: #aeaeb2;
+      --text3: #636366;
+      --border: rgba(255,255,255,0.1);
+      --border2: rgba(255,255,255,0.2);
+    }
+  }
+  body { font-family: var(--font); background: var(--bg3); color: var(--text); min-height: 100vh; }
+  .page { max-width: 860px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+
+  /* Header */
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; gap: 12px; flex-wrap: wrap; }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-icon { width: 36px; height: 36px; background: var(--text); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+  .logo-icon svg { width: 18px; height: 18px; fill: var(--bg); }
+  .logo h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; }
+  .logo p { font-size: 12px; color: var(--text2); margin-top: 1px; }
+  .header-right { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* Buttons */
+  .btn { padding: 8px 16px; border-radius: var(--radius); border: 1px solid var(--border2); background: var(--bg); color: var(--text); font-size: 13px; font-family: var(--font); cursor: pointer; transition: all .15s; white-space: nowrap; }
+  .btn:hover { background: var(--bg2); }
+  .btn-primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .btn-primary:hover { opacity: .82; }
+  .btn-danger { background: #FCEBEB; color: #A32D2D; border-color: #F09595; }
+
+  /* Notification banner */
+  .notif-banner { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 16px; border-radius: var(--radius); margin-bottom: 1.25rem; font-size: 13px; border: 1px solid; }
+  .notif-banner.hidden { display: none; }
+  .notif-banner.info { background: #E6F1FB; border-color: #B5D4F4; color: #0C447C; }
+  .notif-banner.warning { background: #FAEEDA; border-color: #FAC775; color: #854F0B; }
+  .notif-banner.danger { background: #FCEBEB; border-color: #F09595; color: #A32D2D; }
+
+  /* Alarm limit */
+  .alarm-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 1.25rem; }
+  .alarm-row label { font-size: 13px; color: var(--text2); white-space: nowrap; }
+  .alarm-row input[type=range] { flex: 1; accent-color: var(--text); }
+  .alarm-row .alarm-val { font-size: 13px; font-weight: 600; color: var(--text); min-width: 60px; text-align: right; }
+
+  /* Week nav */
+  .week-nav { display: flex; align-items: center; gap: 12px; margin-bottom: 1.25rem; }
+  .week-label { flex: 1; text-align: center; font-size: 14px; font-weight: 600; color: var(--text); }
+
+  /* Stats */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 1.25rem; }
+  .stat-card { background: var(--bg); border-radius: var(--radius); padding: 14px 16px; border: 1px solid var(--border); }
+  .stat-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+  .stat-val { font-size: 24px; font-weight: 700; color: var(--text); line-height: 1; }
+  .progress-bar { height: 4px; background: var(--bg3); border-radius: 999px; margin-top: 8px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 999px; background: #1D9E75; transition: width .4s; }
+
+  /* Filters */
+  .filters { display: flex; gap: 8px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+  .filter-btn { padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg2); font-size: 12px; font-family: var(--font); color: var(--text2); cursor: pointer; transition: all .15s; }
+  .filter-btn.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  /* Task cards */
+  .task-list { display: flex; flex-direction: column; gap: 8px; }
+  .task-card { background: var(--bg); border-radius: var(--radius-lg); border: 1px solid var(--border); padding: 14px 16px; transition: box-shadow .15s, border-color .15s; }
+  .task-card:hover { border-color: var(--border2); }
+  .task-card.status-complete { border-left: 3px solid #1D9E75; }
+  .task-card.status-in_progress { border-left: 3px solid #378ADD; }
+  .task-card.status-in_review { border-left: 3px solid #EF9F27; }
+  .task-card.status-overdue { border-left: 3px solid #E24B4A; }
+  .task-card.alarm-warning { border-left: 3px solid #EF9F27; background: #FAEEDA18; }
+  .task-card.alarm-exceeded { border-left: 3px solid #E24B4A; background: #FCEBEB18; animation: pulse-card 1.8s ease-in-out infinite; }
+  @keyframes pulse-card { 0%,100%{opacity:1} 50%{opacity:.75} }
+
+  .task-top { display: flex; align-items: flex-start; gap: 12px; }
+  .task-checkbox { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border2); cursor: pointer; flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; transition: all .15s; }
+  .task-checkbox.checked { background: #1D9E75; border-color: #1D9E75; }
+  .task-checkbox.checked::after { content:''; display:block; width:5px; height:9px; border:2px solid white; border-top:none; border-left:none; transform:rotate(45deg) translateY(-1px); }
+  .task-info { flex: 1; min-width: 0; }
+  .task-name { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+  .task-name.done { text-decoration: line-through; color: var(--text3); }
+  .task-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .badge { font-size: 11px; padding: 3px 9px; border-radius: 999px; font-weight: 500; }
+  .badge-complete { background: #E1F5EE; color: #0F6E56; }
+  .badge-in_progress { background: #E6F1FB; color: #185FA5; }
+  .badge-in_review { background: #FAEEDA; color: #854F0B; }
+  .badge-overdue { background: #FCEBEB; color: #A32D2D; }
+  .badge-project { background: var(--bg2); color: var(--text2); }
+  .due-label { font-size: 12px; color: var(--text2); }
+  .due-label.near { color: #BA7517; }
+  .due-label.overdue { color: #E24B4A; font-weight: 500; }
+
+  /* Timer section */
+  .task-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .timer-col { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .timer-display { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text); min-width: 56px; text-align: right; }
+  .timer-display.running { color: #185FA5; }
+  .timer-display.warn { color: #854F0B; }
+  .timer-display.alarm { color: #A32D2D; }
+  .alarm-bar-wrap { width: 56px; height: 3px; background: var(--bg3); border-radius: 999px; overflow: hidden; }
+  .alarm-bar { height: 100%; border-radius: 999px; transition: width .6s, background .4s; background: #378ADD; }
+
+  .icon-btn { width: 32px; height: 32px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg2); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; color: var(--text2); transition: all .15s; font-family: var(--font); }
+  .icon-btn:hover { background: var(--bg3); color: var(--text); }
+  .icon-btn.alarm-active { border-color: #F09595; color: #A32D2D; background: #FCEBEB; }
+
+  /* Misc */
+  .empty-state { text-align: center; padding: 4rem 1rem; color: var(--text2); font-size: 14px; }
+  .loading { text-align: center; padding: 4rem 1rem; color: var(--text2); font-size: 14px; }
+  .pulse { animation: pulseA 1.5s ease-in-out infinite; }
+  @keyframes pulseA { 0%,100%{opacity:1} 50%{opacity:.35} }
+  .section-label { font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .07em; margin: 1.5rem 0 .6rem; }
+
+  /* Footer */
+  .footer { margin-top: 3rem; text-align: center; font-size: 12px; color: var(--text3); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+        </svg>
+      </div>
+      <div>
+        <h1>Task Tracker</h1>
+        <p id="sync-label">Connecting to Asana…</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <button class="btn" onclick="toggleNotifTest()">Test alarm</button>
+      <button class="btn btn-primary" onclick="loadTasks()">↻ Sync Asana</button>
+    </div>
+  </div>
+
+  <div class="notif-banner hidden" id="notif-banner">
+    <span id="notif-text"></span>
+    <button class="btn" style="padding:4px 12px;font-size:12px;flex-shrink:0" onclick="dismissNotif()">Dismiss</button>
+  </div>
+
+  <div class="alarm-row">
+    <label>⏱ Time limit per task</label>
+    <input type="range" min="15" max="240" step="15" value="120" id="alarm-slider" oninput="updateAlarmLimit(this.value)">
+    <span class="alarm-val" id="alarm-limit-label">2h 0m</span>
+  </div>
+
+  <div class="week-nav">
+    <button class="btn" onclick="changeWeek(-1)">← Prev week</button>
+    <span class="week-label" id="week-label"></span>
+    <button class="btn" onclick="changeWeek(1)">Next week →</button>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="filters">
+    <button class="filter-btn active" onclick="setFilter('all',this)">All tasks</button>
+    <button class="filter-btn" onclick="setFilter('in_progress',this)">In progress</button>
+    <button class="filter-btn" onclick="setFilter('in_review',this)">In review</button>
+    <button class="filter-btn" onclick="setFilter('complete',this)">Complete</button>
+    <button class="filter-btn" onclick="setFilter('overdue',this)">Overdue</button>
+  </div>
+
+  <div class="task-list" id="task-list">
+    <div class="loading"><span class="pulse">Loading your Asana tasks…</span></div>
+  </div>
+
+  <div class="footer">Task Tracker &nbsp;·&nbsp; Synced with Asana &nbsp;·&nbsp; 2h alarm per task</div>
+</div>
+
+<script>
+const CLAUDE_API = "https://api.anthropic.com/v1/messages";
+const ASANA_MCP  = "https://mcp.asana.com/v2/mcp";
+const WARN_RATIO = 0.75;
+
+let allTasks = [], timers = {}, timerIntervals = {}, alarmedTasks = new Set();
+let currentFilter = 'all', weekOffset = 0, alarmLimitSecs = 7200;
+
+/* ── helpers ── */
+function fmtMinutes(m) { const h=Math.floor(m/60),r=m%60; return h>0?(r>0?`${h}h ${r}m`:`${h}h`):`${r}m`; }
+function padT(n){ return String(n).padStart(2,'0'); }
+function fmtTimer(s){ const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=s%60; return h>0?`${padT(h)}:${padT(m)}:${padT(sc)}`:`${padT(m)}:${padT(sc)}`; }
+function daysUntil(ds){ if(!ds)return null; const n=new Date();n.setHours(0,0,0,0); return Math.round((new Date(ds)-n)/86400000); }
+function formatDue(ds){
+  if(!ds)return null; const d=daysUntil(ds);
+  if(d<0) return {text:`${Math.abs(d)}d overdue`,cls:'overdue'};
+  if(d===0) return {text:'Due today',cls:'near'};
+  if(d===1) return {text:'Due tomorrow',cls:'near'};
+  if(d<=3)  return {text:`Due in ${d}d`,cls:'near'};
+  return {text:`Due ${new Date(ds).toLocaleDateString('en-US',{month:'short',day:'numeric'})}`,cls:''};
+}
+function statusFromTask(t){
+  if(t.completed) return 'complete';
+  if(!t.completed && t.due_on && daysUntil(t.due_on)<0) return 'overdue';
+  const s=(t.memberships?.[0]?.section?.name||'').toLowerCase();
+  if(s.includes('review')) return 'in_review';
+  return 'in_progress';
+}
+function alarmState(id){ const r=(timers[id]||0)/alarmLimitSecs; return r>=1?'exceeded':r>=WARN_RATIO?'warning':'ok'; }
+
+/* ── alarm limit slider ── */
+function updateAlarmLimit(v){
+  alarmLimitSecs = parseInt(v)*60;
+  document.getElementById('alarm-limit-label').textContent = fmtMinutes(parseInt(v));
+  renderTasks();
+}
+
+/* ── week navigation ── */
+function getWeekRange(offset){
+  const n=new Date(),d=n.getDay();
+  const mon=new Date(n); mon.setDate(n.getDate()-(d===0?6:d-1)+offset*7); mon.setHours(0,0,0,0);
+  const sun=new Date(mon); sun.setDate(mon.getDate()+6); sun.setHours(23,59,59,999);
+  return {mon,sun};
+}
+function fmtWeek(mon,sun){
+  const o={month:'short',day:'numeric'};
+  return `${mon.toLocaleDateString('en-US',o)} – ${sun.toLocaleDateString('en-US',o)}`;
+}
+function changeWeek(d){ weekOffset+=d; document.getElementById('week-label').textContent=fmtWeek(...Object.values(getWeekRange(weekOffset))); renderTasks(); }
+
+/* ── timer tick ── */
+function tickTimer(id){
+  timers[id]++;
+  const elapsed=timers[id], ratio=Math.min(elapsed/alarmLimitSecs,1), state=alarmState(id);
+  const pct=Math.round(ratio*100);
+  const te=document.getElementById(`timer-${id}`);
+  const be=document.getElementById(`bar-${id}`);
+  const ce=document.getElementById(`card-${id}`);
+  if(te){ te.textContent=fmtTimer(elapsed); te.className='timer-display running'+(state==='exceeded'?' alarm':state==='warning'?' warn':''); }
+  if(be){ be.style.width=pct+'%'; be.style.background=state==='exceeded'?'#E24B4A':state==='warning'?'#EF9F27':'#378ADD'; }
+  if(ce){
+    const base='task-card status-'+statusFromTask(allTasks.find(t=>t.gid===id)||{});
+    ce.className=base+(state==='exceeded'?' alarm-exceeded':state==='warning'?' alarm-warning':'');
+  }
+  if(state==='exceeded' && !alarmedTasks.has(id)){
+    alarmedTasks.add(id);
+    const name=(allTasks.find(t=>t.gid===id)||{name:'A task'}).name;
+    fireAlarm(id,name);
+  }
+  if(state==='warning' && !alarmedTasks.has(id+'_w')){
+    alarmedTasks.add(id+'_w');
+    const name=(allTasks.find(t=>t.gid===id)||{name:'A task'}).name;
+    showNotif(`Warning: "${name}" is at 75% of your time limit.`,'warning');
+  }
+}
+
+function toggleTimer(id){
+  if(timerIntervals[id]){ clearInterval(timerIntervals[id]); delete timerIntervals[id]; }
+  else { if(!timers[id])timers[id]=0; timerIntervals[id]=setInterval(()=>tickTimer(id),1000); }
+  const btn=document.getElementById(`timerbtn-${id}`);
+  if(btn) btn.textContent=timerIntervals[id]?'⏸':'▶';
+}
+function resetTimer(id){
+  if(timerIntervals[id]){clearInterval(timerIntervals[id]);delete timerIntervals[id];}
+  timers[id]=0; alarmedTasks.delete(id); alarmedTasks.delete(id+'_w');
+  const te=document.getElementById(`timer-${id}`);
+  const be=document.getElementById(`bar-${id}`);
+  const tb=document.getElementById(`timerbtn-${id}`);
+  const ab=document.getElementById(`almbtn-${id}`);
+  const ce=document.getElementById(`card-${id}`);
+  if(te){te.textContent='00:00';te.className='timer-display';}
+  if(be){be.style.width='0%';be.style.background='#378ADD';}
+  if(tb)tb.textContent='▶';
+  if(ab)ab.classList.remove('alarm-active');
+  if(ce)ce.className='task-card status-'+(statusFromTask(allTasks.find(t=>t.gid===id)||{}));
+}
+function toggleComplete(id){
+  const t=allTasks.find(x=>x.gid===id); if(!t)return;
+  t.completed=!t.completed;
+  if(t.completed&&timerIntervals[id]){clearInterval(timerIntervals[id]);delete timerIntervals[id];}
+  renderTasks();
+}
+
+/* ── alarm sound + notif ── */
+function fireAlarm(id,name){
+  showNotif(`Time limit reached on "${name}". Wrap up!`,'danger');
+  sendBrowserNotif('Task time limit reached',`"${name}" hit your ${fmtMinutes(alarmLimitSecs/60)} limit.`);
+  beep([0,180,360]);
+  const ab=document.getElementById(`almbtn-${id}`);
+  if(ab)ab.classList.add('alarm-active');
+}
+function beep(delays){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    delays.forEach(d=>setTimeout(()=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.frequency.value=880;o.type='sine';
+      g.gain.setValueAtTime(0.35,ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.45);
+      o.start();o.stop(ctx.currentTime+0.45);
+    },d));
+  }catch(e){}
+}
+function sendBrowserNotif(title,body){
+  if('Notification' in window && Notification.permission==='granted'){
+    try{new Notification(title,{body});}catch(e){}
+  }
+}
+function showNotif(msg,type='info'){
+  const b=document.getElementById('notif-banner');
+  document.getElementById('notif-text').textContent=msg;
+  b.className=`notif-banner ${type}`;
+  sendBrowserNotif('Task Tracker',msg);
+}
+function dismissNotif(){ document.getElementById('notif-banner').classList.add('hidden'); }
+function toggleNotifTest(){
+  showNotif(`Alarm test: "${fmtMinutes(alarmLimitSecs/60)}" limit reached on "Design specs review"!`,'danger');
+  beep([0,180,360]);
+}
+
+/* ── filters ── */
+function setFilter(f,el){ currentFilter=f; document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active')); el.classList.add('active'); renderTasks(); }
+
+/* ── render ── */
+function getFiltered(){
+  const {mon,sun}=getWeekRange(weekOffset);
+  return allTasks.filter(t=>{
+    const due=t.due_on?new Date(t.due_on):null;
+    const inWk=due?(due>=mon&&due<=sun):weekOffset===0;
+    if(!inWk)return false;
+    if(currentFilter==='all')return true;
+    return statusFromTask(t)===currentFilter;
+  });
+}
+function renderStats(){
+  const {mon,sun}=getWeekRange(weekOffset);
+  const wt=allTasks.filter(t=>{const due=t.due_on?new Date(t.due_on):null;return due?(due>=mon&&due<=sun):weekOffset===0;});
+  const total=wt.length,done=wt.filter(t=>t.completed).length;
+  const od=wt.filter(t=>!t.completed&&daysUntil(t.due_on)<0).length;
+  const pct=total?Math.round(done/total*100):0;
+  document.getElementById('stats').innerHTML=`
+    <div class="stat-card"><div class="stat-label">This week</div><div class="stat-val">${total}</div></div>
+    <div class="stat-card"><div class="stat-label">Complete</div><div class="stat-val" style="color:#1D9E75">${done}</div></div>
+    <div class="stat-card"><div class="stat-label">Overdue</div><div class="stat-val" style="color:#E24B4A">${od}</div></div>
+    <div class="stat-card"><div class="stat-label">Progress</div><div class="stat-val">${pct}%</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+    </div>`;
+}
+function renderTasks(){
+  renderStats();
+  const tasks=getFiltered();
+  const list=document.getElementById('task-list');
+  if(!tasks.length){list.innerHTML='<div class="empty-state">No tasks for this period.</div>';return;}
+  const sorted=[...tasks].sort((a,b)=>{
+    if(!a.due_on&&!b.due_on)return 0; if(!a.due_on)return 1; if(!b.due_on)return -1;
+    return new Date(a.due_on)-new Date(b.due_on);
+  });
+  list.innerHTML=sorted.map(t=>{
+    const st=statusFromTask(t),due=formatDue(t.due_on);
+    const proj=t.memberships?.[0]?.project?.name||'';
+    const id=t.gid,isRun=!!timerIntervals[id],elapsed=timers[id]||0;
+    const ratio=Math.min(elapsed/alarmLimitSecs,1),state=alarmState(id),pct=Math.round(ratio*100);
+    const barColor=state==='exceeded'?'#E24B4A':state==='warning'?'#EF9F27':'#378ADD';
+    let cc=`task-card status-${st}`;
+    if(elapsed>0){if(state==='exceeded')cc+=' alarm-exceeded';else if(state==='warning')cc+=' alarm-warning';}
+    return `<div class="${cc}" id="card-${id}">
+      <div class="task-top">
+        <div class="task-checkbox ${t.completed?'checked':''}" onclick="toggleComplete('${id}')"></div>
+        <div class="task-info">
+          <div class="task-name ${t.completed?'done':''}">${t.name}</div>
+          <div class="task-meta">
+            <span class="badge badge-${st}">${st.replace('_',' ')}</span>
+            ${proj?`<span class="badge badge-project">${proj}</span>`:''}
+            ${due?`<span class="due-label ${due.cls}">${due.text}</span>`:''}
+          </div>
+        </div>
+        <div class="task-actions">
+          <div class="timer-col">
+            <span class="timer-display ${isRun?'running':''} ${state==='exceeded'?'alarm':state==='warning'?'warn':''}" id="timer-${id}">${fmtTimer(elapsed)}</span>
+            <div class="alarm-bar-wrap"><div class="alarm-bar" id="bar-${id}" style="width:${pct}%;background:${barColor}"></div></div>
+          </div>
+          <button class="icon-btn" id="timerbtn-${id}" onclick="toggleTimer('${id}')" title="${isRun?'Pause':'Start'} timer">${isRun?'⏸':'▶'}</button>
+          <button class="icon-btn ${state==='exceeded'?'alarm-active':''}" id="almbtn-${id}" onclick="resetTimer('${id}')" title="Reset">↺</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ── load tasks ── */
+function checkDueNotifs(){
+  const od=allTasks.filter(t=>!t.completed&&daysUntil(t.due_on)<0);
+  const ur=allTasks.filter(t=>!t.completed&&t.due_on&&daysUntil(t.due_on)<=1&&daysUntil(t.due_on)>=0);
+  if(od.length) showNotif(`${od.length} task${od.length>1?'s are':' is'} overdue!`,'danger');
+  else if(ur.length) showNotif(`${ur.length} task${ur.length>1?'s':''}  due today or tomorrow.`,'warning');
+}
+async function loadTasks(){
+  document.getElementById('sync-label').textContent='Syncing…';
+  document.getElementById('task-list').innerHTML='<div class="loading"><span class="pulse">Fetching your Asana tasks…</span></div>';
+  try{
+    const r=await fetch(CLAUDE_API,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',max_tokens:1000,
+        system:`You are a task extractor. Use the Asana MCP to fetch the current user's tasks (limit 50). Return ONLY a JSON array. Each item: { gid, name, completed, due_on (YYYY-MM-DD or null), memberships: [{project:{name},section:{name}}] }. No markdown, no explanation.`,
+        messages:[{role:'user',content:'Fetch my Asana tasks.'}],
+        mcp_servers:[{type:'url',url:ASANA_MCP,name:'asana'}]
+      })
+    });
+    const data=await r.json();
+    let raw='';
+    for(const b of data.content||[]){
+      if(b.type==='text')raw+=b.text;
+      if(b.type==='mcp_tool_result'){const txt=b.content?.[0]?.text||'';try{const p=JSON.parse(txt);if(Array.isArray(p)){raw=txt;break;}}catch(e){}}
+    }
+    const m=raw.replace(/```json|```/g,'').trim().match(/\[[\s\S]*\]/);
+    if(!m)throw new Error('no array');
+    let tasks=JSON.parse(m[0]);
+    if(!Array.isArray(tasks)||!tasks.length)throw new Error('empty');
+    tasks=tasks.map(t=>({...t,overdue:!t.completed&&t.due_on&&daysUntil(t.due_on)<0}));
+    allTasks=tasks;
+    document.getElementById('sync-label').textContent=`Synced ${tasks.length} tasks · ${new Date().toLocaleTimeString()}`;
+    renderTasks();checkDueNotifs();
+  }catch(e){
+    document.getElementById('sync-label').textContent='Could not connect — showing demo data';
+    loadDemo();
+  }
+}
+function loadDemo(){
+  const today=new Date();
+  const fmt=d=>{const x=new Date(today);x.setDate(today.getDate()+d);return x.toISOString().slice(0,10);};
+  allTasks=[
+    {gid:'1',name:'Finalize Q2 design specs',completed:false,due_on:fmt(0),overdue:false,memberships:[{project:{name:'Design'},section:{name:'In Progress'}}]},
+    {gid:'2',name:'Review PR for onboarding flow',completed:false,due_on:fmt(1),overdue:false,memberships:[{project:{name:'Engineering'},section:{name:'In Review'}}]},
+    {gid:'3',name:'Write weekly status report',completed:true,due_on:fmt(-1),overdue:false,memberships:[{project:{name:'Operations'},section:{name:'Done'}}]},
+    {gid:'4',name:'Set up analytics dashboard',completed:false,due_on:fmt(-2),overdue:true,memberships:[{project:{name:'Analytics'},section:{name:'In Progress'}}]},
+    {gid:'5',name:'User interviews prep',completed:false,due_on:fmt(3),overdue:false,memberships:[{project:{name:'Research'},section:{name:'In Progress'}}]},
+    {gid:'6',name:'Update API documentation',completed:false,due_on:fmt(2),overdue:false,memberships:[{project:{name:'Engineering'},section:{name:'In Review'}}]},
+  ];
+  renderTasks();checkDueNotifs();
+}
+
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkDueNotifs();});
+if('Notification' in window&&Notification.permission==='default')Notification.requestPermission();
+const {mon,sun}=getWeekRange(0);
+document.getElementById('week-label').textContent=fmtWeek(mon,sun);
+loadTasks();
+</script>
+</body>
+</html>
