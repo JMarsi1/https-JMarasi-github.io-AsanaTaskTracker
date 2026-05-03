@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Task Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f7f6f3;
+      --surface: #ffffff;
+      --surface2: #f0ede8;
+      --border: rgba(0,0,0,0.10);
+      --border-strong: rgba(0,0,0,0.18);
+      --text: #1a1a18;
+      --text2: #5f5e5a;
+      --text3: #888780;
+      --accent: #F06A35;
+      --accent-hover: #D4552A;
+      --radius: 10px;
+      --radius-lg: 14px;
+      --font: 'DM Sans', sans-serif;
+      --mono: 'DM Mono', monospace;
+
+      --c-complete: #3B6D11; --c-complete-bg: #EAF3DE; --c-complete-border: #639922;
+      --c-progress: #185FA5; --c-progress-bg: #E6F1FB; --c-progress-border: #378ADD;
+      --c-review: #854F0B;   --c-review-bg: #FAEEDA;   --c-review-border: #EF9F27;
+      --c-overdue: #A32D2D;  --c-overdue-bg: #FCEBEB;  --c-overdue-border: #E24B4A;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #18181a;
+        --surface: #232325;
+        --surface2: #2c2c2e;
+        --border: rgba(255,255,255,0.09);
+        --border-strong: rgba(255,255,255,0.18);
+        --text: #f0ede8;
+        --text2: #b4b2a9;
+        --text3: #888780;
+        --c-complete-bg: #1a2e10; --c-progress-bg: #0d1f35;
+        --c-review-bg: #2a1d08; --c-overdue-bg: #2a1010;
+      }
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    /* SIDEBAR */
+    .layout { display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: 220px;
+      background: var(--surface);
+      border-right: 0.5px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 1.5rem 1rem;
+      position: fixed;
+      height: 100vh;
+      top: 0; left: 0;
+      z-index: 20;
+    }
+
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 2rem;
+    }
+    .logo-icon {
+      width: 34px; height: 34px; background: var(--accent);
+      border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .logo-icon svg { width: 18px; height: 18px; fill: white; }
+    .logo-text { font-size: 15px; font-weight: 600; color: var(--text); }
+    .logo-sub { font-size: 11px; color: var(--text3); }
+
+    .nav-section { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: var(--text3); text-transform: uppercase; margin: 1.2rem 0 0.5rem 8px; }
+
+    .nav-item {
+      display: flex; align-items: center; gap: 9px;
+      padding: 8px 10px; border-radius: 8px;
+      font-size: 13px; color: var(--text2); cursor: pointer;
+      border: none; background: none; width: 100%; text-align: left;
+      transition: background 0.12s, color 0.12s;
+    }
+    .nav-item:hover { background: var(--surface2); color: var(--text); }
+    .nav-item.active { background: var(--surface2); color: var(--text); font-weight: 500; }
+    .nav-item .nav-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    .sidebar-bottom { margin-top: auto; padding-top: 1rem; border-top: 0.5px solid var(--border); }
+    .connect-btn {
+      width: 100%; background: var(--accent); color: white; border: none;
+      border-radius: var(--radius); padding: 9px 14px; font-size: 13px;
+      cursor: pointer; font-weight: 500; display: flex; align-items: center; gap: 8px;
+      font-family: var(--font); transition: background 0.15s;
+    }
+    .connect-btn:hover { background: var(--accent-hover); }
+    .connect-btn svg { width: 14px; height: 14px; fill: white; flex-shrink: 0; }
+
+    /* MAIN */
+    .main { margin-left: 220px; flex: 1; padding: 2rem 2.5rem; max-width: 900px; }
+
+    /* TOP BAR */
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; flex-wrap: wrap; gap: 12px; }
+    .page-title { font-size: 22px; font-weight: 600; color: var(--text); }
+    .page-sub { font-size: 13px; color: var(--text3); margin-top: 2px; }
+    .add-btn {
+      background: var(--text); color: var(--bg); border: none; border-radius: var(--radius);
+      padding: 9px 18px; font-size: 13px; font-weight: 500; cursor: pointer;
+      font-family: var(--font); transition: opacity 0.15s;
+    }
+    .add-btn:hover { opacity: 0.85; }
+
+    /* ALARM BANNER */
+    .alarm-banner {
+      display: none; background: var(--c-overdue-bg); border: 0.5px solid var(--c-overdue-border);
+      border-radius: var(--radius); padding: 12px 16px; margin-bottom: 1.5rem;
+      font-size: 13px; color: var(--c-overdue); align-items: center; gap: 12px;
+    }
+    .alarm-banner.show { display: flex; }
+    .alarm-text { flex: 1; font-weight: 500; }
+    .dismiss-btn { background: none; border: none; cursor: pointer; color: var(--c-overdue); font-size: 18px; line-height: 1; }
+
+    /* STATS */
+    .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 1.8rem; }
+    .stat {
+      background: var(--surface); border: 0.5px solid var(--border);
+      border-radius: var(--radius); padding: 14px 12px; text-align: center;
+    }
+    .stat-num { font-size: 24px; font-weight: 600; color: var(--text); }
+    .stat-label { font-size: 10px; color: var(--text3); margin-top: 3px; letter-spacing: 0.03em; }
+
+    /* WEEK NAV */
+    .week-row { display: flex; align-items: center; gap: 10px; margin-bottom: 1.2rem; }
+    .week-btn {
+      background: var(--surface); border: 0.5px solid var(--border);
+      border-radius: var(--radius); padding: 7px 13px; font-size: 13px;
+      color: var(--text2); cursor: pointer; font-family: var(--font); transition: background 0.12s;
+    }
+    .week-btn:hover { background: var(--surface2); }
+    .week-label { font-size: 14px; font-weight: 500; color: var(--text); flex: 1; text-align: center; }
+
+    /* FILTERS */
+    .toolbar { display: flex; align-items: center; gap: 6px; margin-bottom: 1.2rem; flex-wrap: wrap; }
+    .filter-pill {
+      font-size: 12px; padding: 5px 13px; border-radius: 20px;
+      border: 0.5px solid var(--border); background: none; cursor: pointer;
+      color: var(--text2); font-family: var(--font); transition: all 0.12s;
+    }
+    .filter-pill:hover { background: var(--surface2); }
+    .filter-pill.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+    /* TASK CARDS */
+    .task-list { display: flex; flex-direction: column; gap: 9px; }
+
+    .task-card {
+      background: var(--surface); border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg); padding: 14px 16px;
+      border-left: 3px solid var(--border);
+      transition: border-color 0.15s;
+      position: relative;
+    }
+    .task-card.complete   { border-left-color: var(--c-complete-border); background: var(--c-complete-bg); }
+    .task-card.in-progress { border-left-color: var(--c-progress-border); background: var(--c-progress-bg); }
+    .task-card.in-review   { border-left-color: var(--c-review-border); background: var(--c-review-bg); }
+    .task-card.overdue     { border-left-color: var(--c-overdue-border); background: var(--c-overdue-bg); }
+
+    @keyframes ring {
+      0%   { outline: 2px solid var(--c-overdue-border); }
+      100% { outline: 5px solid var(--c-overdue-border); }
+    }
+    .task-card.alarm-ring { animation: ring 0.5s ease-in-out infinite alternate; }
+
+    .task-top { display: flex; align-items: flex-start; gap: 12px; }
+    .task-left { flex: 1; min-width: 0; }
+
+    .task-name-input {
+      font-size: 14px; font-weight: 500; color: var(--text);
+      border: none; background: transparent; width: 100%; outline: none;
+      font-family: var(--font); padding: 0; cursor: text;
+    }
+    .task-name-input:focus {
+      background: rgba(0,0,0,0.04); border-radius: 4px; padding: 1px 5px;
+    }
+
+    .task-meta { display: flex; align-items: center; gap: 8px; margin-top: 5px; flex-wrap: wrap; }
+
+    .status-wrap { position: relative; display: inline-block; }
+    .status-badge {
+      font-size: 10px; font-weight: 500; padding: 3px 10px; border-radius: 12px;
+      cursor: pointer; border: 0.5px solid; font-family: var(--font);
+      transition: opacity 0.12s;
+    }
+    .status-badge:hover { opacity: 0.8; }
+    .status-badge.complete   { background: var(--c-complete-bg); color: var(--c-complete); border-color: var(--c-complete-border); }
+    .status-badge.in-progress { background: var(--c-progress-bg); color: var(--c-progress); border-color: var(--c-progress-border); }
+    .status-badge.in-review   { background: var(--c-review-bg); color: var(--c-review); border-color: var(--c-review-border); }
+    .status-badge.overdue     { background: var(--c-overdue-bg); color: var(--c-overdue); border-color: var(--c-overdue-border); }
+
+    .status-menu {
+      display: none; position: absolute; top: calc(100% + 4px); left: 0;
+      background: var(--surface); border: 0.5px solid var(--border-strong);
+      border-radius: var(--radius); padding: 5px; z-index: 30; min-width: 140px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    }
+    .status-menu.open { display: block; }
+    .status-opt {
+      display: block; width: 100%; padding: 7px 12px; font-size: 12px;
+      border: none; background: none; text-align: left; cursor: pointer;
+      color: var(--text); border-radius: 6px; font-family: var(--font);
+      transition: background 0.1s;
+    }
+    .status-opt:hover { background: var(--surface2); }
+
+    .due-tag { font-size: 11px; color: var(--text3); }
+    .due-tag.soon    { color: var(--c-review); font-weight: 500; }
+    .due-tag.overdue { color: var(--c-overdue); font-weight: 500; }
+
+    .task-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+    .timer-display {
+      font-family: var(--mono); font-size: 14px; font-weight: 400;
+      color: var(--text); min-width: 72px; text-align: right;
+      transition: color 0.3s;
+    }
+    .timer-display.warning { color: var(--c-review); }
+    .timer-display.danger  { color: var(--c-overdue); }
+
+    .timer-btns { display: flex; gap: 4px; }
+    .t-btn {
+      width: 28px; height: 28px; border-radius: 7px;
+      border: 0.5px solid var(--border); background: var(--surface);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-size: 12px; color: var(--text2); transition: all 0.12s;
+    }
+    .t-btn:hover { background: var(--surface2); }
+    .t-btn.playing { background: var(--c-progress-bg); color: var(--c-progress); border-color: var(--c-progress-border); }
+
+    .progress-bar { height: 3px; background: var(--border); border-radius: 2px; margin-top: 12px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 2px; background: var(--c-progress-border); transition: width 1s linear, background 0.3s; }
+    .progress-fill.warning { background: var(--c-review-border); }
+    .progress-fill.danger  { background: var(--c-overdue-border); }
+
+    /* EMPTY STATE */
+    .empty { text-align: center; padding: 3rem; color: var(--text3); font-size: 14px; }
+    .empty-icon { font-size: 32px; margin-bottom: 0.75rem; }
+
+    /* MODAL */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.45); z-index: 100;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--surface); border-radius: var(--radius-lg);
+      padding: 1.8rem; width: 360px; border: 0.5px solid var(--border-strong);
+      animation: slideUp 0.2s ease;
+    }
+    @keyframes slideUp { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: none; } }
+    .modal h2 { font-size: 16px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+    .modal p  { font-size: 12px; color: var(--text3); margin-bottom: 1rem; line-height: 1.6; }
+    .modal input {
+      width: 100%; padding: 9px 12px; border-radius: var(--radius);
+      border: 0.5px solid var(--border-strong); background: var(--surface2);
+      color: var(--text); font-size: 13px; margin-bottom: 10px;
+      font-family: var(--font); outline: none;
+    }
+    .modal input:focus { border-color: var(--accent); }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
+    .btn-cancel {
+      background: none; border: 0.5px solid var(--border-strong);
+      border-radius: var(--radius); padding: 8px 16px; cursor: pointer;
+      font-size: 13px; color: var(--text2); font-family: var(--font);
+    }
+    .btn-confirm {
+      background: var(--accent); color: white; border: none;
+      border-radius: var(--radius); padding: 8px 18px; cursor: pointer;
+      font-size: 13px; font-weight: 500; font-family: var(--font); transition: background 0.15s;
+    }
+    .btn-confirm:hover { background: var(--accent-hover); }
+
+    /* RESPONSIVE */
+    @media (max-width: 700px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; padding: 1.2rem; }
+      .stats { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="3.5"/><circle cx="5" cy="18" r="3.5"/><circle cx="19" cy="18" r="3.5"/></svg>
+      </div>
+      <div>
+        <div class="logo-text">Task Tracker</div>
+        <div class="logo-sub">Powered by Asana</div>
+      </div>
+    </div>
+
+    <div class="nav-section">Views</div>
+    <button class="nav-item active" onclick="setFilter('all',this)">
+      <span class="nav-dot" style="background:#888"></span> All tasks
+    </button>
+    <button class="nav-item" onclick="setFilter('in-progress',this)">
+      <span class="nav-dot" style="background:var(--c-progress)"></span> In progress
+    </button>
+    <button class="nav-item" onclick="setFilter('in-review',this)">
+      <span class="nav-dot" style="background:var(--c-review)"></span> In review
+    </button>
+    <button class="nav-item" onclick="setFilter('complete',this)">
+      <span class="nav-dot" style="background:var(--c-complete)"></span> Complete
+    </button>
+    <button class="nav-item" onclick="setFilter('overdue',this)">
+      <span class="nav-dot" style="background:var(--c-overdue)"></span> Overdue
+    </button>
+
+    <div class="sidebar-bottom">
+      <button class="connect-btn" id="connect-btn" onclick="openModal()">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="3.5"/><circle cx="5" cy="18" r="3.5"/><circle cx="19" cy="18" r="3.5"/></svg>
+        Connect Asana
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+
+    <div class="topbar">
+      <div>
+        <div class="page-title">My Tasks</div>
+        <div class="page-sub" id="week-sub">Loading week...</div>
+      </div>
+      <button class="add-btn" onclick="addTask()">+ Add task</button>
+    </div>
+
+    <!-- ALARM BANNER -->
+    <div class="alarm-banner" id="alarm-banner">
+      <span class="alarm-text" id="alarm-msg">⏰ Task reached the 2-hour limit.</span>
+      <button class="dismiss-btn" onclick="dismissAlarm()">✕</button>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats">
+      <div class="stat"><div class="stat-num" id="s-total">0</div><div class="stat-label">Total</div></div>
+      <div class="stat"><div class="stat-num" id="s-progress" style="color:var(--c-progress)">0</div><div class="stat-label">In progress</div></div>
+      <div class="stat"><div class="stat-num" id="s-review" style="color:var(--c-review)">0</div><div class="stat-label">In review</div></div>
+      <div class="stat"><div class="stat-num" id="s-complete" style="color:var(--c-complete)">0</div><div class="stat-label">Complete</div></div>
+      <div class="stat"><div class="stat-num" id="s-due" style="color:var(--c-overdue)">0</div><div class="stat-label">Overdue</div></div>
+    </div>
+
+    <!-- WEEK NAV -->
+    <div class="week-row">
+      <button class="week-btn" onclick="changeWeek(-1)">← Prev</button>
+      <div class="week-label" id="week-label">—</div>
+      <button class="week-btn" onclick="changeWeek(1)">Next →</button>
+    </div>
+
+    <!-- FILTERS (mobile / secondary) -->
+    <div class="toolbar">
+      <button class="filter-pill active" onclick="setFilter('all',this)">All</button>
+      <button class="filter-pill" onclick="setFilter('in-progress',this)">In progress</button>
+      <button class="filter-pill" onclick="setFilter('in-review',this)">In review</button>
+      <button class="filter-pill" onclick="setFilter('complete',this)">Complete</button>
+      <button class="filter-pill" onclick="setFilter('overdue',this)">Overdue</button>
+    </div>
+
+    <!-- TASK LIST -->
+    <div class="task-list" id="task-list"></div>
+
+  </main>
+</div>
+
+<!-- ASANA MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h2>Connect to Asana</h2>
+    <p>Enter your Asana Personal Access Token to pull tasks from your workspace. You can generate one at <strong>app.asana.com → Profile → Apps → Personal Access Tokens</strong>.</p>
+    <input type="password" id="asana-token" placeholder="Asana Personal Access Token" />
+    <input type="text"     id="asana-workspace" placeholder="Workspace GID (optional)" />
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-confirm" onclick="connectAsana()">Connect</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ── state ────────────────────────────────────── */
+  let tasks       = [];
+  let filter      = 'all';
+  let weekOffset  = 0;
+  let alarmingId  = null;
+  let notifCount  = 0;
+  const ORIG_TITLE = 'Task Tracker';
+  const ALARM_SECS = 7200;   /* 2 hours */
+
+  const STATUS_LABELS = {
+    'in-progress': 'In progress',
+    'in-review':   'In review',
+    'complete':    'Complete',
+    'overdue':     'Overdue'
+  };
+
+  /* ── helpers ──────────────────────────────────── */
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function fmtTime(s){ return `${pad(Math.floor(s/3600))}:${pad(Math.floor((s%3600)/60))}:${pad(s%60)}`; }
+
+  function getWeekBounds(offset){
+    const now  = new Date();
+    const day  = now.getDay();
+    const mon  = new Date(now);
+    mon.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + offset * 7);
+    mon.setHours(0,0,0,0);
+    const sun  = new Date(mon);
+    sun.setDate(mon.getDate() + 6);
+    return { mon, sun };
+  }
+
+  function fmtRange(offset){
+    const { mon, sun } = getWeekBounds(offset);
+    const o = { month:'short', day:'numeric' };
+    return `${mon.toLocaleDateString('en',o)} – ${sun.toLocaleDateString('en',o)}`;
+  }
+
+  function getDueStatus(ds){
+    if (!ds) return '';
+    const diff = (new Date(ds) - new Date()) / 86400000;
+    if (diff < 0)   return 'overdue';
+    if (diff < 3)   return 'soon';
+    return '';
+  }
+
+  function cardStatus(t){
+    if (getDueStatus(t.dueDate) === 'overdue' && t.status !== 'complete') return 'overdue';
+    return t.status;
+  }
+
+  function timerClass(s){
+    const pct = s / ALARM_SECS;
+    if (pct >= 0.9) return 'danger';
+    if (pct >= 0.7) return 'warning';
+    return '';
+  }
+
+  /* ── tab / notification ───────────────────────── */
+  function updateTab(){
+    const due = tasks.filter(t => getDueStatus(t.dueDate) === 'overdue').length + notifCount;
+    document.title = due > 0 ? `(${due}) ${ORIG_TITLE}` : ORIG_TITLE;
+  }
+
+  function sendNotif(msg){
+    if (!('Notification' in window)) return;
+    const fire = () => new Notification('Task Tracker', { body: msg });
+    if (Notification.permission === 'granted') fire();
+    else if (Notification.permission !== 'denied') Notification.requestPermission().then(p => { if(p==='granted') fire(); });
+  }
+
+  /* ── week nav ─────────────────────────────────── */
+  function changeWeek(d){
+    weekOffset += d;
+    document.getElementById('week-label').textContent = fmtRange(weekOffset);
+    document.getElementById('week-sub').textContent   = 'Week of ' + fmtRange(weekOffset);
+    render();
+  }
+
+  /* ── stats ────────────────────────────────────── */
+  function updateStats(){
+    document.getElementById('s-total').textContent    = tasks.length;
+    document.getElementById('s-progress').textContent = tasks.filter(t=>t.status==='in-progress').length;
+    document.getElementById('s-review').textContent   = tasks.filter(t=>t.status==='in-review').length;
+    document.getElementById('s-complete').textContent = tasks.filter(t=>t.status==='complete').length;
+    document.getElementById('s-due').textContent      = tasks.filter(t=>getDueStatus(t.dueDate)==='overdue').length;
+  }
+
+  /* ── timer ────────────────────────────────────── */
+  function toggleTimer(id){
+    const t = tasks.find(x=>x.id===id);
+    if (!t) return;
+    if (t.running){
+      clearInterval(t._iv); t._iv = null; t.running = false;
+    } else {
+      if (t.elapsed >= ALARM_SECS) return;
+      t.running = true;
+      t._iv = setInterval(()=>{
+        t.elapsed++;
+        if (t.elapsed >= ALARM_SECS){ clearInterval(t._iv); t._iv=null; t.running=false; triggerAlarm(id); }
+        refreshCard(id);
+        updateStats();
+      }, 1000);
+    }
+    refreshCard(id);
+  }
+
+  function resetTimer(id){
+    const t = tasks.find(x=>x.id===id);
+    if (!t) return;
+    clearInterval(t._iv); t._iv=null; t.running=false; t.elapsed=0;
+    refreshCard(id);
+  }
+
+  function triggerAlarm(id){
+    const t = tasks.find(x=>x.id===id);
+    document.getElementById('alarm-msg').textContent = `⏰ 2-hour limit reached: "${t?t.name:'Task'}"`;
+    document.getElementById('alarm-banner').classList.add('show');
+    alarmingId = id;
+    const card = document.getElementById('card-'+id);
+    if (card) card.classList.add('alarm-ring');
+    sendNotif(`⏰ Time's up! "${t?t.name:'Task'}" reached the 2-hour limit.`);
+    notifCount++; updateTab();
+  }
+
+  function dismissAlarm(){
+    document.getElementById('alarm-banner').classList.remove('show');
+    if (alarmingId){
+      const card = document.getElementById('card-'+alarmingId);
+      if (card) card.classList.remove('alarm-ring');
+      alarmingId = null;
+    }
+  }
+
+  /* ── status ───────────────────────────────────── */
+  function toggleStatusMenu(id){
+    document.querySelectorAll('.status-menu').forEach(m=>{
+      if (m.id !== 'smenu-'+id) m.classList.remove('open');
+    });
+    document.getElementById('smenu-'+id).classList.toggle('open');
+  }
+
+  function setStatus(id, status){
+    const t = tasks.find(x=>x.id===id);
+    if (t){ t.status=status; document.getElementById('smenu-'+id).classList.remove('open'); updateStats(); render(); updateTab(); }
+  }
+
+  /* ── rename ───────────────────────────────────── */
+  function renameTask(id, val){ const t=tasks.find(x=>x.id===id); if(t) t.name=val; }
+
+  /* ── remove ───────────────────────────────────── */
+  function removeTask(id){
+    const t = tasks.find(x=>x.id===id);
+    if (t && t._iv) clearInterval(t._iv);
+    tasks = tasks.filter(x=>x.id!==id);
+    updateStats(); render(); updateTab();
+  }
+
+  /* ── add task ─────────────────────────────────── */
+  function addTask(name){
+    const due = new Date(); due.setDate(due.getDate()+2);
+    tasks.push({ id: Date.now(), name: name||'New task', status:'in-progress', dueDate: due.toISOString().split('T')[0], elapsed:0, running:false, _iv:null });
+    updateStats(); render(); updateTab();
+    /* focus the new card's input */
+    setTimeout(()=>{
+      const inputs = document.querySelectorAll('.task-name-input');
+      if (inputs.length) inputs[inputs.length-1].focus();
+    }, 50);
+  }
+
+  /* ── refresh single card (no re-render) ──────── */
+  function refreshCard(id){
+    const t = tasks.find(x=>x.id===id);
+    if (!t) return;
+    const disp = document.getElementById('timer-'+id);
+    const fill = document.getElementById('fill-'+id);
+    const btn  = document.getElementById('play-'+id);
+    if (!disp) return;
+    const cls = timerClass(t.elapsed);
+    disp.textContent = fmtTime(t.elapsed);
+    disp.className   = 'timer-display'+(cls?' '+cls:'');
+    if (fill){ fill.style.width = Math.min(t.elapsed/ALARM_SECS*100,100)+'%'; fill.className='progress-fill'+(cls?' '+cls:''); }
+    if (btn){ btn.textContent = t.running?'⏸':'▶'; btn.className='t-btn'+(t.running?' playing':''); }
+  }
+
+  /* ── filter ───────────────────────────────────── */
+  function setFilter(f, el){
+    filter = f;
+    /* highlight sidebar nav + toolbar pills */
+    document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.filter-pill').forEach(b=>b.classList.remove('active'));
+    el.classList.add('active');
+    render();
+  }
+
+  /* ── render all ───────────────────────────────── */
+  function render(){
+    const { mon, sun } = getWeekBounds(weekOffset);
+
+    const visible = tasks.filter(t=>{
+      const due = t.dueDate ? new Date(t.dueDate) : null;
+      if (due){ due.setHours(0,0,0,0); if(due<mon||due>sun) return false; }
+      const cs = cardStatus(t);
+      if (filter==='all')     return true;
+      if (filter==='overdue') return cs==='overdue';
+      return t.status===filter;
+    });
+
+    const list = document.getElementById('task-list');
+
+    if (!visible.length){
+      list.innerHTML = `<div class="empty"><div class="empty-icon">📋</div>No tasks match this view — try a different filter or week.</div>`;
+      return;
+    }
+
+    list.innerHTML = visible.map(t=>{
+      const cs  = cardStatus(t);
+      const pct = Math.min(t.elapsed/ALARM_SECS*100,100);
+      const cls = timerClass(t.elapsed);
+      const ds  = getDueStatus(t.dueDate);
+      const dueLbl = t.dueDate
+        ? `<span class="due-tag ${ds}">Due ${new Date(t.dueDate).toLocaleDateString('en',{month:'short',day:'numeric'})}${ds==='overdue'?' · overdue':ds==='soon'?' · soon':''}</span>`
+        : '';
+      const safeName = t.name.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+
+      return `<div class="task-card ${cs}" id="card-${t.id}">
+        <div class="task-top">
+          <div class="task-left">
+            <input class="task-name-input" id="name-${t.id}" value="${safeName}" onchange="renameTask(${t.id},this.value)" />
+            <div class="task-meta">
+              <div class="status-wrap">
+                <button class="status-badge ${t.status}" onclick="toggleStatusMenu(${t.id})">${STATUS_LABELS[t.status]||t.status} ▾</button>
+                <div class="status-menu" id="smenu-${t.id}">
+                  <button class="status-opt" onclick="setStatus(${t.id},'in-progress')">In progress</button>
+                  <button class="status-opt" onclick="setStatus(${t.id},'in-review')">In review</button>
+                  <button class="status-opt" onclick="setStatus(${t.id},'complete')">Complete</button>
+                </div>
+              </div>
+              ${dueLbl}
+            </div>
+          </div>
+          <div class="task-right">
+            <span class="timer-display${cls?' '+cls:''}" id="timer-${t.id}">${fmtTime(t.elapsed)}</span>
+            <div class="timer-btns">
+              <button class="t-btn${t.running?' playing':''}" id="play-${t.id}" onclick="toggleTimer(${t.id})" title="Start/Pause">${t.running?'⏸':'▶'}</button>
+              <button class="t-btn" onclick="resetTimer(${t.id})" title="Reset timer">↺</button>
+              <button class="t-btn" onclick="removeTask(${t.id})" title="Remove task">✕</button>
+            </div>
+          </div>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill${cls?' '+cls:''}" id="fill-${t.id}" style="width:${pct}%"></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  /* ── close status menus on outside click ──────── */
+  document.addEventListener('click', e=>{
+    if (!e.target.closest('.status-wrap')) document.querySelectorAll('.status-menu').forEach(m=>m.classList.remove('open'));
+  });
+
+  /* ── modal ────────────────────────────────────── */
+  function openModal()  { document.getElementById('modal').classList.add('open'); }
+  function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+  async function connectAsana(){
+    const token = document.getElementById('asana-token').value.trim();
+    if (!token){ alert('Please enter your Personal Access Token.'); return; }
+    closeModal();
+    const btn = document.getElementById('connect-btn');
+    btn.textContent = 'Connecting...';
+    try {
+      const resp = await fetch('https://app.asana.com/api/1.0/tasks/me?opt_fields=name,completed,due_on,assignee_status', {
+        headers: { Authorization: 'Bearer '+token }
+      });
+      if (!resp.ok) throw new Error('Auth failed');
+      const data = await resp.json();
+      (data.data||[]).slice(0,30).forEach(at=>{
+        tasks.push({ id: at.gid||Date.now()+Math.random(), name: at.name||'Untitled', status: at.completed?'complete':'in-progress', dueDate: at.due_on||'', elapsed:0, running:false, _iv:null });
+      });
+      btn.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="white"><circle cx="12" cy="5" r="3.5"/><circle cx="5" cy="18" r="3.5"/><circle cx="19" cy="18" r="3.5"/></svg> Connected ✓`;
+      btn.style.background = 'var(--c-complete)';
+    } catch(e){
+      btn.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="white"><circle cx="12" cy="5" r="3.5"/><circle cx="5" cy="18" r="3.5"/><circle cx="19" cy="18" r="3.5"/></svg> Connect Asana`;
+      alert('Could not connect — check your token.\n\nYou can still add tasks manually with "+ Add task".');
+    }
+    updateStats(); render(); updateTab();
+  }
+
+  /* ── notification permission ──────────────────── */
+  if ('Notification' in window && Notification.permission === 'default'){
+    setTimeout(()=> Notification.requestPermission(), 1500);
+  }
+
+  /* ── sample data ──────────────────────────────── */
+  function daysFromNow(n){ const d=new Date(); d.setDate(d.getDate()+n); return d.toISOString().split('T')[0]; }
+  tasks = [
+    { id:1, name:'Design system review',     status:'in-review',   dueDate: daysFromNow(1),  elapsed:5820, running:false, _iv:null },
+    { id:2, name:'Sprint planning doc',      status:'in-progress', dueDate: daysFromNow(3),  elapsed:1200, running:false, _iv:null },
+    { id:3, name:'Q2 report finalization',   status:'complete',    dueDate: daysFromNow(0),  elapsed:7200, running:false, _iv:null },
+    { id:4, name:'Client onboarding email',  status:'in-progress', dueDate: daysFromNow(-1), elapsed:900,  running:false, _iv:null },
+    { id:5, name:'API integration audit',    status:'in-review',   dueDate: daysFromNow(2),  elapsed:3600, running:false, _iv:null },
+  ];
+
+  /* ── init ─────────────────────────────────────── */
+  document.getElementById('week-label').textContent = fmtRange(0);
+  document.getElementById('week-sub').textContent   = 'Week of ' + fmtRange(0);
+  updateStats(); render(); updateTab();
+</script>
+</body>
+</html>
